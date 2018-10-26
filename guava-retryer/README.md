@@ -168,3 +168,19 @@ public class MyRetryListener<Boolean> implements RetryListener {
  
 
  
+
+**StopStrategy**：停止重试策略，提供三种:
+
+1. StopAfterDelayStrategy 设定一个最长允许的执行时间；比如设定最长执行10s，无论任务执行次数，只要重试的时候超出了最长时间，则任务终止，并返回重试异常RetryException。
+2. NeverStopStrategy 不停止，用于需要一直轮训知道返回期望结果的情况。
+3. StopAfterAttemptStrategy 设定最大重试次数，如果超出最大重试次数则停止重试，并返回重试异常。
+
+**WaitStrategy**：等待时长策略（控制时间间隔），返回结果为下次执行时长：
+
+1. FixedWaitStrategy 固定等待时长策略。
+2. RandomWaitStrategy 随机等待时长策略（可以提供一个最小和最大时长，等待时长为其区间随机值）。
+3. IncrementingWaitStrategy 递增等待时长策略（提供一个初始值和步长，等待时间随重试次数增加而增加）。
+4. ExponentialWaitStrategy 指数等待时长策略。
+5. FibonacciWaitStrategy Fibonacci 等待时长策略。
+6. ExceptionWaitStrategy 异常时长等待策略。
+7. CompositeWaitStrategy 复合时长等待策略
