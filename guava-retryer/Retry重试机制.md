@@ -2,17 +2,17 @@
 
 ## 业务场景
 
-	应用中需要实现一个功能： 需要将数据上传到远程存储服务，同时在返回处理成功情况下做其他操作。这个功能不复杂，分为两个步骤：第一步调用远程的Rest服务逻辑包装给处理方法返回处理结果；第二步拿到第一步结果或者捕捉异常，如果出现错误或异常实现重试上传逻辑，否则继续逻辑操作。
+应用中需要实现一个功能： 需要将数据上传到远程存储服务，同时在返回处理成功情况下做其他操作。这个功能不复杂，分为两个步骤：第一步调用远程的Rest服务逻辑包装给处理方法返回处理结果；第二步拿到第一步结果或者捕捉异常，如果出现错误或异常实现重试上传逻辑，否则继续逻辑操作。
 
 ## 解决方案演化
 
-	这个问题的技术点在于能够触发重试，以及重试情况下逻辑有效执行。
+这个问题的技术点在于能够触发重试，以及重试情况下逻辑有效执行。
 
 ### 解决方案一：
 
 ### try-catch-redo简单重试模式
 
-	包装正常上传逻辑基础上，通过判断返回结果或监听异常决策是否重试，同时为了解决立即重试的无效执行(假设异常是有外部执行不稳定导致的)，休眠一定延迟时间重新执行功能逻辑。
+包装正常上传逻辑基础上，通过判断返回结果或监听异常决策是否重试，同时为了解决立即重试的无效执行(假设异常是有外部执行不稳定导致的)，休眠一定延迟时间重新执行功能逻辑。
 
 ```
 public void commonRetry(Map<String, Object> dataMap) throws InterruptedException {
@@ -38,7 +38,7 @@ public void commonRetry(Map<String, Object> dataMap) throws InterruptedException
 
 ### try-catch-redo-retry strategy策略重试模式
 
-	上述方案还是有可能重试无效，解决这个问题尝试增加重试次数retrycount以及重试间隔周期interval，达到增加重试有效的可能性。
+上述方案还是有可能重试无效，解决这个问题尝试增加重试次数retrycount以及重试间隔周期interval，达到增加重试有效的可能性。
 
 ```
 public void commonRetry(Map<String, Object> dataMap) throws InterruptedException {
@@ -58,25 +58,25 @@ public void commonRetry(Map<String, Object> dataMap) throws InterruptedException
 	}
 ```
 
-	方案一和方案二存在一个问题：正常逻辑和重试逻辑强耦合，重试逻辑非常依赖正常逻辑的执行结果，对正常逻辑预期结果被动重试触发，对于重试根源往往由于逻辑复杂被淹没，可能导致后续运维对于重试逻辑要解决什么问题产生不一致理解。重试正确性难保证而且不利于运维，原因是重试设计依赖正常逻辑异常或重试根源的臆测。
+方案一和方案二存在一个问题：正常逻辑和重试逻辑强耦合，重试逻辑非常依赖正常逻辑的执行结果，对正常逻辑预期结果被动重试触发，对于重试根源往往由于逻辑复杂被淹没，可能导致后续运维对于重试逻辑要解决什么问题产生不一致理解。重试正确性难保证而且不利于运维，原因是重试设计依赖正常逻辑异常或重试根源的臆测。
 
 ## 优雅重试方案尝试
 
-	那有没有可以参考的方案实现正常逻辑和重试逻辑解耦，同时能够让重试逻辑有一个标准化的解决思路？答案是有：那就是基于代理设计模式的重试工具，我们尝试使用相应工具来重构上述场景。
+那有没有可以参考的方案实现正常逻辑和重试逻辑解耦，同时能够让重试逻辑有一个标准化的解决思路？答案是有：那就是基于代理设计模式的重试工具，我们尝试使用相应工具来重构上述场景。
 
 ### 尝试方案一：
 
 ### 应用命令设计模式解耦正常和重试逻辑
 
-	命令设计模式具体定义不展开阐述，主要该方案看中命令模式能够通过执行对象完成接口操作逻辑，同时内部封装处理重试逻辑，不暴露实现细节，对于调用者来看就是执行了正常逻辑，达到解耦的目标，具体看下功能实现。（类图结构）
+命令设计模式具体定义不展开阐述，主要该方案看中命令模式能够通过执行对象完成接口操作逻辑，同时内部封装处理重试逻辑，不暴露实现细节，对于调用者来看就是执行了正常逻辑，达到解耦的目标，具体看下功能实现。（类图结构）
 
 ![](https://raw.githubusercontent.com/yang-zhijiang/learngit/master/guava-retryer/retry%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6.png)
 
-	IRetry约定了上传和重试接口，其实现类OdpsRetry封装ODPS上传逻辑，同时封装重试机制和重试策略。与此同时使用recover方法在结束执行做恢复操作。
+IRetry约定了上传和重试接口，其实现类OdpsRetry封装ODPS上传逻辑，同时封装重试机制和重试策略。与此同时使用recover方法在结束执行做恢复操作。
 
+ 
 
-
- 	而我们的调用者LogicClient无需关注重试，通过重试者Retryer实现约定接口功能，同时 Retryer需要对重试逻辑做出响应和处理， Retryer具体重试处理又交给真正的IRtry接口的实现类OdpsRetry完成。通过采用命令模式，优雅实现正常逻辑和重试逻辑分离，同时通过构建重试者角色，实现正常逻辑和重试逻辑的分离，让重试有更好的扩展性。
+而我们的调用者LogicClient无需关注重试，通过重试者Retryer实现约定接口功能，同时 Retryer需要对重试逻辑做出响应和处理， Retryer具体重试处理又交给真正的IRtry接口的实现类OdpsRetry完成。通过采用命令模式，优雅实现正常逻辑和重试逻辑分离，同时通过构建重试者角色，实现正常逻辑和重试逻辑的分离，让重试有更好的扩展性。
 
 
 
@@ -84,7 +84,7 @@ public void commonRetry(Map<String, Object> dataMap) throws InterruptedException
 
 ### spring-retry 规范正常和重试逻辑
 
-	[spring](http://lib.csdn.net/base/javaee)-retry是一个开源工具包，目前可用的版本为1.1.2.RELEASE，该工具把重试操作模板定制化，可以设置重试策略和回退策略。同时重试执行实例保证线程安全，具体场景操作实例如下：
+spring-retry是一个开源工具包，目前可用的版本为1.1.2.RELEASE，该工具把重试操作模板定制化，可以设置重试策略和回退策略。同时重试执行实例保证线程安全，具体场景操作实例如下：
 
 ```
 public void upload(final Map<String, Object> map) throws Exception {
@@ -123,21 +123,21 @@ public void upload(final Map<String, Object> map) throws Exception {
 	}
 ```
 
-	简单剖析下案例代码，RetryTemplate 承担了重试执行者的角色，它可以设置SimpleRetryPolicy(重试策略，设置重试上限，重试的根源实体)，FixedBackOffPolicy（固定的回退策略，设置执行重试回退的时间间隔）。      
-	
-	RetryTemplate通过execute提交执行操作，需要准备RetryCallback 和RecoveryCallback 两个类实例，前者对应的就是重试回调逻辑实例，包装正常的功能操作，RecoveryCallback实现的是整个执行操作结束的恢复操作实例。
+简单剖析下案例代码，RetryTemplate 承担了重试执行者的角色，它可以设置SimpleRetryPolicy(重试策略，设置重试上限，重试的根源实体)，FixedBackOffPolicy（固定的回退策略，设置执行重试回退的时间间隔）。      
+
+RetryTemplate通过execute提交执行操作，需要准备RetryCallback 和RecoveryCallback 两个类实例，前者对应的就是重试回调逻辑实例，包装正常的功能操作，RecoveryCallback实现的是整个执行操作结束的恢复操作实例。
 
  	RetryTemplate的execute 是线程安全的，实现逻辑使用ThreadLocal保存每个执行实例的RetryContext执行上下文。
 
-	Spring-retry工具虽能优雅实现重试，但是存在两个不友好设计：一个是 重试实体限定为Throwable子类，说明重试针对的是可捕捉的功能异常为设计前提的，但是我们希望依赖某个数据对象实体作为重试实体，但Sping-retry框架必须强制转换为Throwable子类。另一个就是重试根源的断言对象使用的是doWithRetry的Exception 异常实例，不符合正常内部断言的返回设计。
-	
-	Spring Retry提倡以注解的方式对方法进行重试，重试逻辑是同步执行的，重试的“失败”针对的是Throwable，如果你要以返回值的某个状态来判定是否需要重试，可能只能通过自己判断返回值然后显式抛出异常了。
+Spring-retry工具虽能优雅实现重试，但是存在两个不友好设计：一个是 重试实体限定为Throwable子类，说明重试针对的是可捕捉的功能异常为设计前提的，但是我们希望依赖某个数据对象实体作为重试实体，但Sping-retry框架必须强制转换为Throwable子类。另一个就是重试根源的断言对象使用的是doWithRetry的Exception 异常实例，不符合正常内部断言的返回设计。
+
+Spring Retry提倡以注解的方式对方法进行重试，重试逻辑是同步执行的，重试的“失败”针对的是Throwable，如果你要以返回值的某个状态来判定是否需要重试，可能只能通过自己判断返回值然后显式抛出异常了。
 
 
 
 ## Spring 对于Retry的抽象
 
-	“抽象”是每个程序员必备的素质。对于资质平平的我来说，没有比模仿与理解优秀源码更好地进步途径了吧。为此，我将其核心逻辑重写了一遍...下面就看看Spring Retry对于“重试”的抽象。
+“抽象”是每个程序员必备的素质。对于资质平平的我来说，没有比模仿与理解优秀源码更好地进步途径了吧。为此，我将其核心逻辑重写了一遍...下面就看看Spring Retry对于“重试”的抽象。
 
 ### “重试”逻辑
 
@@ -175,7 +175,7 @@ if(stillFail) {
 
 ### guava-retryer 分离正常和重试逻辑
 
-	Guava retryer工具与spring-retry类似，都是通过定义重试者角色来包装正常逻辑重试，但是Guava retryer有更优的策略定义，在支持重试次数和重试频度控制基础上，能够兼容支持多个异常或者自定义实体对象的重试源定义，让重试功能有更多的灵活性。Guava Retryer也是线程安全的，入口调用逻辑采用的是[Java](http://lib.csdn.net/base/javase).util.concurrent.Callable的call方法，示例代码如下：
+Guava retryer工具与spring-retry类似，都是通过定义重试者角色来包装正常逻辑重试，但是Guava retryer有更优的策略定义，在支持重试次数和重试频度控制基础上，能够兼容支持多个异常或者自定义实体对象的重试源定义，让重试功能有更多的灵活性。Guava Retryer也是线程安全的，入口调用逻辑采用的是[Java](http://lib.csdn.net/base/javase).util.concurrent.Callable的call方法，示例代码如下：
 
 ```
 public void uploadOdps(final Map<String, Object> map) {
@@ -213,13 +213,13 @@ public void uploadOdps(final Map<String, Object> map) {
 
 示例代码原理分析：
 
-    RetryerBuilder是一个factory创建者，可以定制设置重试源且可以支持多个重试源，可以配置重试次数或重试超时时间，以及可以配置等待时间间隔，创建重试者Retryer实例。
-    
-    RetryerBuilder的重试源支持Exception异常对象 和自定义断言对象，通过retryIfException 和retryIfResult设置，同时支持多个且能兼容。
-    
-    RetryerBuilder的等待时间和重试限制配置采用不同的策略类实现，同时对于等待时间特征可以支持无间隔和固定间隔方式。
-    
-    Retryer 是重试者实例，通过call方法执行操作逻辑，同时封装重试源操作。
+RetryerBuilder是一个factory创建者，可以定制设置重试源且可以支持多个重试源，可以配置重试次数或重试超时时间，以及可以配置等待时间间隔，创建重试者Retryer实例。
+
+RetryerBuilder的重试源支持Exception异常对象 和自定义断言对象，通过retryIfException 和retryIfResult设置，同时支持多个且能兼容。
+
+RetryerBuilder的等待时间和重试限制配置采用不同的策略类实现，同时对于等待时间特征可以支持无间隔和固定间隔方式。
+
+Retryer 是重试者实例，通过call方法执行操作逻辑，同时封装重试源操作。
 
 
 
