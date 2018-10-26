@@ -162,7 +162,7 @@ public class MyRetryListener<Boolean> implements RetryListener {
 
 　　效果如下：
 
-![img](file:///C:/Users/Administrator/AppData/Local/YNote/data/qq90D20E10AFE77595160BC989EFC7A172/61506dfb548543428fecac1029ea10b7/6-1115270382.png)
+![img](https://raw.githubusercontent.com/yang-zhijiang/learngit/master/guava-retryer/README-img.png)
 
  
 
