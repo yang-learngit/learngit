@@ -73,8 +73,11 @@ public void commonRetry(Map<String, Object> dataMap) throws InterruptedException
 ![](https://raw.githubusercontent.com/yang-zhijiang/learngit/master/guava-retryer/retry%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6.png)
 
 IRetry约定了上传和重试接口，其实现类OdpsRetry封装ODPS上传逻辑，同时封装重试机制和重试策略。与此同时使用recover方法在结束执行做恢复操作。
+<<<<<<< HEAD
 
  
+=======
+>>>>>>> a1807440a5a2175a7fb8e8ce9b4f18242fd856cc
 
 而我们的调用者LogicClient无需关注重试，通过重试者Retryer实现约定接口功能，同时 Retryer需要对重试逻辑做出响应和处理， Retryer具体重试处理又交给真正的IRtry接口的实现类OdpsRetry完成。通过采用命令模式，优雅实现正常逻辑和重试逻辑分离，同时通过构建重试者角色，实现正常逻辑和重试逻辑的分离，让重试有更好的扩展性。
 
