@@ -70,7 +70,7 @@ public void commonRetry(Map<String, Object> dataMap) throws InterruptedException
 
 	命令设计模式具体定义不展开阐述，主要该方案看中命令模式能够通过执行对象完成接口操作逻辑，同时内部封装处理重试逻辑，不暴露实现细节，对于调用者来看就是执行了正常逻辑，达到解耦的目标，具体看下功能实现。（类图结构）
 
-
+![](https://raw.githubusercontent.com/yang-zhijiang/learngit/master/guava-retryer/retry%E9%87%8D%E8%AF%95%E6%9C%BA%E5%88%B6.png)
 
 	IRetry约定了上传和重试接口，其实现类OdpsRetry封装ODPS上传逻辑，同时封装重试机制和重试策略。与此同时使用recover方法在结束执行做恢复操作。
 
@@ -124,13 +124,13 @@ public void upload(final Map<String, Object> map) throws Exception {
 ```
 
 	简单剖析下案例代码，RetryTemplate 承担了重试执行者的角色，它可以设置SimpleRetryPolicy(重试策略，设置重试上限，重试的根源实体)，FixedBackOffPolicy（固定的回退策略，设置执行重试回退的时间间隔）。      
-
+	
 	RetryTemplate通过execute提交执行操作，需要准备RetryCallback 和RecoveryCallback 两个类实例，前者对应的就是重试回调逻辑实例，包装正常的功能操作，RecoveryCallback实现的是整个执行操作结束的恢复操作实例。
 
-	 RetryTemplate的execute 是线程安全的，实现逻辑使用ThreadLocal保存每个执行实例的RetryContext执行上下文。
+ 	RetryTemplate的execute 是线程安全的，实现逻辑使用ThreadLocal保存每个执行实例的RetryContext执行上下文。
 
 	Spring-retry工具虽能优雅实现重试，但是存在两个不友好设计：一个是 重试实体限定为Throwable子类，说明重试针对的是可捕捉的功能异常为设计前提的，但是我们希望依赖某个数据对象实体作为重试实体，但Sping-retry框架必须强制转换为Throwable子类。另一个就是重试根源的断言对象使用的是doWithRetry的Exception 异常实例，不符合正常内部断言的返回设计。
-
+	
 	Spring Retry提倡以注解的方式对方法进行重试，重试逻辑是同步执行的，重试的“失败”针对的是Throwable，如果你要以返回值的某个状态来判定是否需要重试，可能只能通过自己判断返回值然后显式抛出异常了。
 
 
@@ -158,7 +158,7 @@ if(stillFail) {
 
 同步重试代码基本可以表示为上述，但是Spring Retry对其进行了非常优雅地抽象，虽然主要逻辑不变，但是看起来却是舒服多了。主要的接口抽象如下图所示：
 
-
+![](https://raw.githubusercontent.com/yang-zhijiang/learngit/master/guava-retryer/spring-retry%E6%8E%A5%E5%8F%A3.jpg)
 
 - RetryCallback: 封装你需要重试的业务逻辑（上文中的doSth）
 - RecoverCallback：封装在多次重试都失败后你需要执行的业务逻辑(上文中的doSthWhenStillFail)
@@ -214,11 +214,11 @@ public void uploadOdps(final Map<String, Object> map) {
 示例代码原理分析：
 
     RetryerBuilder是一个factory创建者，可以定制设置重试源且可以支持多个重试源，可以配置重试次数或重试超时时间，以及可以配置等待时间间隔，创建重试者Retryer实例。
-
+    
     RetryerBuilder的重试源支持Exception异常对象 和自定义断言对象，通过retryIfException 和retryIfResult设置，同时支持多个且能兼容。
-
+    
     RetryerBuilder的等待时间和重试限制配置采用不同的策略类实现，同时对于等待时间特征可以支持无间隔和固定间隔方式。
-
+    
     Retryer 是重试者实例，通过call方法执行操作逻辑，同时封装重试源操作。
 
 
